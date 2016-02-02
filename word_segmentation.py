@@ -1,6 +1,9 @@
 #!/usr/bin/python
 # encoding: utf-8
 
+input = open("/Users/kohei-mu/Downloads/kftt-data-1.0/data/tok/train.ja","r")
+input_for_split = open("/Users/kohei-mu/Downloads/nlptutorial/data/wiki-ja-test.txt","r")
+
 #word segmentation
 
 import math
@@ -11,41 +14,46 @@ lamb_unk = 1 - lamb1
 V = 10 ** 6
 
 #unigram training
-def train_file(filename):
-	infile = open(filename, "r")
+def train_file(file):
 	counts = defaultdict(lambda: 0)
-	total = 0
-	for line in infile:
-		line = line.rstrip()
-		words = line.split(" ")
+	total = 0 #total of words
+
+	for line in file:
+		words = line.strip().split(" ")
 		words.append("</s>")
 		for word in words:
-			counts[word] += 1
-			total += 1
-	probs = {}
-	for word in counts:
-		probs[word] = counts[words] / float(total)
+			counts[word] += 1 #number of each words
+			total += 1 #total of words
+	
+	probs = {} #unigram features
+	for word in counts.keys():
+		probs[word] = counts[word] / float(total)
+	
 	model = {}
+	#model:  {probs{word:uni}, total of words}
 	model["probs"] = probs
 	model["total"] = total
 	return model
 
-#calculate the weight of the edge
+#calculate the unigram for unk word
 def calc_p(model, word):
+	#p = lambda * unigram + ( (1-lamda) / V(big number) )
 	p = lamb_unk / V
 	if word in model["probs"]:
 		p += (lamb1 * model["probs"][word])
 	return p
 
-#whether "the word" is  in the model
+#return whether or not the word is in the model dic
 def is_in(model, word):
-	return word in model["probs"]
+	return word in model["probs"].keys()
 
 
-#split the words
+#split the words with viterbi
+#forward and backward algorithm
 def split(model, line):
 	best_edge = defaultdict(lambda: None)
 	best_score = defaultdict(lambda: 10 ** 10)
+	
 	best_score[0] = 0
 
 	#forward
@@ -57,7 +65,9 @@ def split(model, line):
 				#the weight of the edge
 				p = calc_p(model, encoded)
 				#calculate the score
+				#best_score[word_begin]: next score
 				score = best_score[word_begin] + (-math.log(p))
+				#best_score[word_end]: (previous) next score
 				if score < best_score[word_end]:
 					#update the score
 					best_score[word_end] = score
@@ -70,7 +80,7 @@ def split(model, line):
 	while next_edge != None:
 		word = line[next_edge[0]:next_edge[1]]
 		encoded = word.encode("utf-8")
-		words.append(encoded)
+		words.append(encoded.strip())
 		next_edge = best_edge[next_edge[0]]
 	words.reverse()
 	#return the splitted words
@@ -79,17 +89,9 @@ def split(model, line):
 
 #############execute###################
 
-#train uni gram model
-model = train_file("infile_for_uni_gram")
-test_file = open("infile_for_test","r")
-for line in test_file:
-	line = line.rstrip()
-	encoded = unicode(line, "utf-8")
+model = train_file(input)
+for line in input_for_split:
+	line = line.strip()
+	encoded = line.decode("utf-8")
 	splitted = split(model, encoded)
 	print splitted
-
-
-
-######動作未確認
-
-
