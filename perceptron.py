@@ -4,7 +4,6 @@
 #パーセプトロン学習プログラム
 #http://www.phontron.com/slides/nlp-programming-ja-03-perceptron.pdf
 
-#f = open("../Downloads/nlptutorial/test/03-train-input.txt","r").readlines()
 f = open("../../Downloads/nlptutorial/data/titles-en-train.labeled","r").readlines()
 j = open("../../Downloads/nlptutorial/data/titles-en-test.word","r").readlines()
 from collections import defaultdict
