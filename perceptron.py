@@ -4,9 +4,14 @@
 #パーセプトロン学習プログラム
 #http://www.phontron.com/slides/nlp-programming-ja-03-perceptron.pdf
 
-f = open("../../Downloads/nlptutorial/data/titles-en-train.labeled","r").readlines()
-j = open("../../Downloads/nlptutorial/data/titles-en-test.word","r").readlines()
+import argparse
 from collections import defaultdict
+
+parser = argparse.ArgumentParser(description="help message")
+parser.add_argument("-train", dest="train",default="/Users/kohei-mu/Downloads/nlptutorial/data/titles-en-train.labeled", type=argparse.FileType('r'),help="training document(labeled)")
+parser.add_argument("-test", dest="test", default="/Users/kohei-mu/Downloads/nlptutorial/data/titles-en-test.word", type=argparse.FileType('r'), help="test document")
+args = parser.parse_args()
+
 #最初の重みを設定
 def first_weights(lines):
     weight = defaultdict(int)
@@ -18,32 +23,14 @@ def first_weights(lines):
             weight[word] = 0
     return weight
 
-#ユニグラムの素性を抽出c ../
+#ユニグラムの素性を抽出 ../
 def create_features(lines):
-	#phi = {}
 	phi = defaultdict(int)
-	#i = lines.strip()
-	#words = i.split(" ")
 	words = lines.strip().split(" ")
 	for word in words:
 		word = "UNI: "+word
 		phi[word] += 1
 	return phi
-
-#def create_features_(lines):
-#    phi = defaultdict(int)
-#    counts = defaultdict(int)
-#    total_count = 0
-
-#    words = lines.strip().split(" ")
-#    for word in words:
-#        word = "UNI: " + word
-#        counts[word] += 1
-#        total_count += 1
-#    for word in words:
-#        word = "UNI: " + word
-#        phi[word] = float(counts[word]) / total_count
-#    return phi
 
 #一行ごとの重み付き和を計算し、予測
 def predict_one(weight, phi):
@@ -63,32 +50,29 @@ def update_weights(weight,phi,y):
 			weight[name] += int(value)*int(y)
 
 #全体的な重みの学習
-def learn(input):
-	weight = first_weights(input)
-	for i in input:
-		i = i.rstrip()
-		i = i.split("\t")
-		y = i[0]
-		x = i[1]
-		phi = create_features(x)
-		y_ = predict_one(weight,phi)
-		if int(y_) != int(y):
-			update_weights(weight,phi,y)
+def learn(train):
+    weight = first_weights(train)
+    for i in train:
+        i = i.rstrip().split("\t")
+        y = i[0]
+        x = i[1]
+        phi = create_features(x)
+        y_ = predict_one(weight,phi)
+        if int(y_) != int(y):update_weights(weight,phi,y)
 
-	return weight
-
+    return weight
 
 #全体的な予測
-def predict_all(input, test):
-	weight = learn(input)
-	print weight
-	for i in test:
-		i = i.rstrip()
-		phi = create_features(i)
-		#print phi
-		y_ = predict_one(weight,phi)
-		#print y_,i
+def predict_all(train, test):
+    weight = learn(train)
+    for i in test:
+        i = i.rstrip()
+        phi = create_features(i)
+        y_ = predict_one(weight,phi)
+        if y_ == 1:
+            print "POSITIVE :",i, "\n"
+        else:
+            print "NEGATIVE :",i, "\n"
 
-
-#実行
-predict_all(f,j)
+if __name__ == "__main__":
+    predict_all(args.train.readlines(), args.test.readlines())

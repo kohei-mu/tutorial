@@ -1,83 +1,69 @@
 #/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#n-gram学習プログラム
+#n-gramモデル学習プログラム
 #http://www.phontron.com/slides/nlp-programming-ja-02-bigramlm.pdf
 
 from math import *
+import argparse
+from collections import defaultdict
 
-#f = open("../Downloads/nlptutorial/test/02-train-input.txt","r").readlines()
-f = open("../Downloads/nlptutorial/data/wiki-en-train.word","r").readlines()
-test = open("../Downloads/nlptutorial/data/wiki-en-test.word","r").readlines()
+parser = argparse.ArgumentParser(description="help message")
+parser.add_argument("-train", dest="train", default="/Users/kohei-mu/Downloads/nlptutorial/data/wiki-en-train.word",type=argparse.FileType('r'), help="training document")
+parser.add_argument("-test", dest="test", default="/Users/kohei-mu/Downloads/nlptutorial/data/wiki-en-test.word", type=argparse.FileType("r"), help="test document")
+args = parser.parse_args()
 
-def create_map(input):
-	counts = {}
-	context = {}
-	probability = {}
-	for i in input:
-		i = i.rstrip()
-		words = i.split(" ")
-		words.append("</s>")
-		words.insert(0,"<s>")
-		for l in xrange(0,len(words)):
-			if l > 0:
-				if (words[l-1]+" "+words[l]) in counts:
-					counts[words[l-1]+" "+words[l]] += 1
-				else:
-					counts[words[l-1]+" "+words[l]] = 1
+def train_ngram(train):
+    counts = defaultdict(int)
+    context = defaultdict(int)
+    probability = {}
+    for i in train:
+        words = i.rstrip().split(" ")
+        words.append("</s>")
+        words.insert(0,"<s>")
+        for l in xrange(0,len(words)):
+            if l > 0:
+                counts[words[l-1]+" "+words[l]] += 1
+                context[words[l-1]] += 1
+            counts[words[l]] += 1
+            context[""] += 1
+    for ngram, count in counts.items():
+        con = ngram.split(" ")[0]
+        try:
+            probability[ngram] = float(counts[ngram]) / context[con]
+        except:
+            continue
 
-				if words[l-1] in context:
-					context[words[l-1]] += 1
-				else:
-					context[words[l-1]] = 1
+    return probability, counts
 
-		for h in xrange(0,len(words)):
-			if words[h] in counts:
-				counts[words[h]] += 1
-			else:
-				counts[words[h]] = 1
+def witten_bell(prob):
+    dic = defaultdict(int)
+    for word in prob:
+        words = word.split()
+        if words > 1:
+            dic[words[0]] += 1
+    return dic
 
-			if "" in context:
-				context[""] += 1
-			else:
-				context[""] = 1
-
-
-	for ngram, count in counts.items():
-		con = ngram.split(" ")
-		con = con[0]
-		try:
-			prob = float(counts[ngram])/context[con]
-			probability[ngram] = prob
-
-		except:
-			continue
-
-	return probability
-
-def ngram_test(model_input, test_input):
-	p = create_map(model_input)
-	ganmma_1 = 0.9#補間係数
-	ganmma_2 = 0.9#補間係数
-	v = 1000000
-	w = 0
-	h = 0
-	for line in test_input:
-		line = line.rstrip()
-		line = line.split(" ")
-		line.append("</s>")
-		line.insert(0,"<s>")
-		for l in xrange(1,len(line)-1):
-			try:
-				p1 = ganmma_1 * p[line[l]] + (1 - ganmma_1) / v
-				p2 = ganmma_2 * p[line[l-1]+" "+line[l]] + (1 - ganmma_2) * p1
-				h += -log(p2)
-				w += 1
-			except:
-				continue
-
-	return h/w
+def ngram_test(train, test):
+    p, c = train_ngram(train)
+    u_dic = witten_bell(p)
+    w = 0
+    h = 0
+    for line in test:
+        line = line.rstrip().split(" ")
+        line.append("</s>")
+        line.insert(0,"<s>")
+        for l in xrange(1,len(line)-1):
+            try:
+                lambda_wi = 1 - float(u_dic[line[l-1]]) / (u_dic[line[l-1]] + c[line[l-1]])
+                p_w = lambda_wi * p[line[l-1]+" "+line[l]] + (1 - lambda_wi) * p[line[l]]
+                h += -log(p_w)
+                w += 1
+            except:
+                continue
+    return h/w
 
 #実行
-print "entropy",ngram_test(f,test)
+if __name__ == "__main__":
+    print "entropy", ngram_test(args.train.readlines(), args.test.readlines())
 
