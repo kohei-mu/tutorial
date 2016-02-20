@@ -4,53 +4,45 @@
 #HMM品詞推定
 #http://www.phontron.com/slides/nlp-programming-ja-05-hmm.pdf
 
-#f = open("../../Downloads/nlptutorial/test/05-train-input.txt","r")
-f = open("../../Downloads/nlp-programming/data/wiki-en-train.norm_pos","r")
-w = open("pos_train.txt", "w")
+from collections import defaultdict
+import argparse
 
-def train(input_file):
-	emit = {}
-	transition = {}
-	context = {}
-	ganmma = 0.95
-	N = 10**6
-	for line in input_file:
-		line = line.rstrip()
-		previous = "<s>"
-		if context.has_key("<s>"):
-			context["<s>"] += 1
-		else:
-			context.setdefault("<s>",1)
-		wordtags = line.split(" ")
-		for wordtag in wordtags:
-			wordtag = wordtag.split("_")
-			word = wordtag[0]
-			tag = wordtag[1]
-			if transition.has_key(previous+" "+tag):
-				transition[previous+" "+tag] += 1 
-			else:
-				transition.setdefault(previous+" "+tag, 1)
-			if context.has_key(tag):
-				context[tag] += 1
-			else:
-				context.setdefault(tag, 1)
-			if emit.has_key(tag+" "+word):
-				emit[tag+" "+word] += 1
-			else:
-				emit.setdefault(tag+" "+word, 1)
-			previous = tag
-		if transition.has_key(previous+" "+"</s>"):
-			transition[previous+" "+"</s>"] += 1
-		else:
-			transition.setdefault(previous+" "+"</s>", 1)
-	for key, value in transition.items():
-		key = key.split(" ")
-		previous = key[0]
-		w.write("T" +" "+ " ".join(key) +" "+ str(float(value)/context[previous])+"\n")
-	for key, value in emit.items():
-		key = key.split(" ")
-		tag = key[0]
-		w.write("E" +" "+ " ".join(key) +" "+ str(ganmma * float(value)/context[tag] + (1-ganmma)/N)+"\n")
+parser = argparse.ArgumentParser(description="help message")
+parser.add_argument("-train",dest="train", default="/Users/kohei-mu/Downloads/nlp-programming/data/wiki-en-train.norm_pos", type=argparse.FileType("r"), help="train document")
+parser.add_argument("-test", dest="test", default="/Users/kohei-mu/Downloads/nlp-programming/data/wiki-en-test.norm", type=argparse.FileType("r"), help="test document")
+args = parser.parse_args()
 
 
-train(f)
+def train(train_doc):
+    emit = defaultdict(int)
+    trans = defaultdict(int)
+    tag_list = defaultdict(int)
+    tag_set = set()
+    _lambda = 0.95
+    N = 10 ** 6
+    for line in train_doc:
+        words = line.strip().split()
+        words.insert(0, "<s>_<s>")
+        words.append("</s>_</s>")
+        pre_tag = ""
+        for word in words:
+            wordTag = word.split("_")
+            tag_list[wordTag[1]] += 1
+            tag_set.add(wordTag[1])
+            if word is not "<s>_<s>" and word is not "</s>_</s>":
+                trans[wordTag[1]+" "+wordTag[0]] += 1
+            if not pre_tag == "":
+                emit[pre_tag+" "+wordTag[1]] += 1
+            pre_tag = wordTag[1]
+    emit_prob = defaultdict()
+    trans_prob = defaultdict()
+    for key, value in emit.items():
+        emit_prob[key] = float(value) / tag_list[key.split()[0]]
+    for key, value in trans.items():
+        trans_prob[key] = _lambda * ( float(value) / tag_list[key.split()[0]] ) + (1 - _lambda)*1/N
+
+    return emit_prob, trans_prob, tag_set
+
+
+
+a,b, c = train(args.train)
