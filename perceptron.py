@@ -12,7 +12,6 @@ parser.add_argument("-train", dest="train",default="/Users/kohei-mu/Downloads/nl
 parser.add_argument("-test", dest="test", default="/Users/kohei-mu/Downloads/nlptutorial/data/titles-en-test.word", type=argparse.FileType('r'), help="test document")
 args = parser.parse_args()
 
-#最初の重みを設定
 def first_weights(lines):
     weight = defaultdict(int)
     for i in lines:
@@ -23,7 +22,6 @@ def first_weights(lines):
             weight[word] = 0
     return weight
 
-#ユニグラムの素性を抽出 ../
 def create_features(lines):
 	phi = defaultdict(int)
 	words = lines.strip().split(" ")
@@ -32,24 +30,18 @@ def create_features(lines):
 		phi[word] += 1
 	return phi
 
-#一行ごとの重み付き和を計算し、予測
 def predict_one(weight, phi):
 	score = 0
 	for name,value in phi.items():
 		if name in weight:
 			score += float(value) * weight[name]
-	if score >= 0:
-		return 1
-	else:
-		return -1
+    return 1 if score >= 0 else -1
 
-#重みの更新
 def update_weights(weight,phi,y):
 	for name,value in phi.items():
 		if name in weight:
 			weight[name] += int(value)*int(y)
 
-#全体的な重みの学習
 def learn(train):
     weight = first_weights(train)
     for i in train:
@@ -62,7 +54,6 @@ def learn(train):
 
     return weight
 
-#全体的な予測
 def predict_all(train, test):
     weight = learn(train)
     for i in test:
